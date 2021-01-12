@@ -12,7 +12,7 @@
 #define BUFSZ 1024
 
 void usage(int argc, char **argv) {
-    printf("usage: %s <v4|v6> <server port>\n", argv[0]);
+    printf("usage: %s <server port>\n", argv[0]);
     printf("example: %s v4 51511\n", argv[0]);
     exit(EXIT_FAILURE);
 }
@@ -46,12 +46,12 @@ void * client_thread(void *data) {
 }
 
 int main(int argc, char **argv) {
-    if (argc < 3) {
+    if (argc < 2) {
         usage(argc, argv);
     }
 
     struct sockaddr_storage storage;
-    if (0 != server_sockaddr_init(argv[1], argv[2], &storage)) {
+    if (0 != server_sockaddr_init("v4", argv[1], &storage)) {
         usage(argc, argv);
     }
 

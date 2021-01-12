@@ -7,7 +7,7 @@ clean:
 	rm common.o cliente servidor
 
 run_servidor:
-	./servidor v4 5151
+	./servidor 51511
 
 run_cliente:
-	./cliente 0.0.0.0 5151
+	./cliente 127.0.0.1 51511
