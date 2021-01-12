@@ -11,3 +11,9 @@ run_servidor:
 
 run_cliente:
 	./cliente 127.0.0.1 51511
+
+valgrind_servidor:
+	valgrind --track-origins=yes --leak-check=full --show-leak-kinds=all ./servidor 51511
+
+valgrind_cliente:
+	valgrind --track-origins=yes --leak-check=full --show-leak-kinds=all ./cliente 127.0.0.1 51511
