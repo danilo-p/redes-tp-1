@@ -1,13 +1,13 @@
 all:
 	gcc -Wall -c common.c
-	gcc -Wall client.c common.o -o client
-	gcc -Wall server-mt.c common.o -lpthread -o server-mt
+	gcc -Wall cliente.c common.o -o cliente
+	gcc -Wall servidor.c common.o -lpthread -o servidor
 
 clean:
-	rm common.o client server-mt
+	rm common.o cliente servidor
 
-run_server:
-	./server-mt v4 5151
+run_servidor:
+	./servidor v4 5151
 
-run_client:
-	./client 0.0.0.0 5151
+run_cliente:
+	./cliente 0.0.0.0 5151
