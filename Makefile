@@ -1,6 +1,6 @@
 all:
 	gcc -Wall -c common.c
-	gcc -Wall cliente.c common.o -o cliente
+	gcc -Wall cliente.c common.o -lpthread -o cliente
 	gcc -Wall servidor.c common.o -lpthread -o servidor
 
 clean:

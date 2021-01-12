@@ -1,5 +1,6 @@
 #include "common.h"
 
+#include <pthread.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -57,6 +58,45 @@ int addrparse(const char *addrstr, const char *portstr,
 
 #define BUFSZ 1024
 
+void *recv_thread(void *data)
+{
+    int socket_fd = *((int *)data);
+
+    char buf[BUFSZ];
+    while (1)
+    {
+        memset(buf, 0, BUFSZ);
+        printf("> ");
+        fgets(buf, BUFSZ - 1, stdin);
+        size_t count = send(socket_fd, buf, strlen(buf) + 1, 0);
+        if (count != strlen(buf) + 1)
+        {
+            logexit("send");
+        }
+
+        memset(buf, 0, BUFSZ);
+        unsigned total = 0;
+        while (1)
+        {
+            count = recv(socket_fd, buf + total, BUFSZ - total, 0);
+            if (count == 0)
+            {
+                logexit("recv");
+            }
+            total += count;
+            if (buf[total - 1] == '\n')
+            {
+                break;
+            }
+        }
+
+        printf("received %u bytes\n", total);
+        puts(buf);
+    }
+
+    pthread_exit(EXIT_SUCCESS);
+}
+
 int main(int argc, char **argv)
 {
     if (argc < 3)
@@ -86,41 +126,9 @@ int main(int argc, char **argv)
 
     printf("[log] connected to %s\n", addrstr);
 
-    char buf[BUFSZ];
-    while (1)
-    {
-        memset(buf, 0, BUFSZ);
-        printf("mensagem> ");
-        fgets(buf, BUFSZ - 1, stdin);
-        size_t count = send(socket_fd, buf, strlen(buf) + 1, 0);
-        if (count != strlen(buf) + 1)
-        {
-            logexit("send");
-        }
-
-        memset(buf, 0, BUFSZ);
-        unsigned total = 0;
-        while (1)
-        {
-            count = recv(socket_fd, buf + total, BUFSZ - total, 0);
-            if (count == 0)
-            {
-                logexit("recv");
-            }
-            total += count;
-            printf("AKSLDJFLAKSJDF %li %u\n", count, total);
-            printf("%i\n", buf[total - 1] == '\n');
-            printf("%i\n", buf[total - 1] == '\0');
-            puts(buf);
-            if (buf[total - 1] == '\n')
-            {
-                break;
-            }
-        }
-
-        printf("received %u bytes\n", total);
-        puts(buf);
-    }
+    pthread_t tid;
+    pthread_create(&tid, NULL, recv_thread, &socket_fd);
+    pthread_join(tid, NULL);
 
     close(socket_fd);
 
