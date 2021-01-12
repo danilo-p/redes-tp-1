@@ -19,7 +19,7 @@ void usage(int argc, char **argv)
 }
 
 int sockaddr_init(const char *portstr,
-                         struct sockaddr_storage *storage)
+                  struct sockaddr_storage *storage)
 {
     uint16_t port = (uint16_t)atoi(portstr); // unsigned short
     if (port == 0)
@@ -51,17 +51,24 @@ void *client_thread(void *data)
     addrtostr(client_addr, caddrstr, BUFSZ);
     printf("[log] connection from %s\n", caddrstr);
 
-    char buf[BUFSZ];
-    memset(buf, 0, BUFSZ);
-    size_t count = recv(cdata->client_socket_fd, buf, BUFSZ - 1, 0);
-    printf("[msg] %s, %d bytes: %s\n", caddrstr, (int)count, buf);
-
-    sprintf(buf, "remote endpoint: %.1000s\n", caddrstr);
-    count = send(cdata->client_socket_fd, buf, strlen(buf) + 1, 0);
-    if (count != strlen(buf) + 1)
+    while (1)
     {
-        logexit("send");
+        char buf[BUFSZ];
+        memset(buf, 0, BUFSZ);
+
+        printf("[msg] waiting for client %s\n", caddrstr);
+        size_t count = recv(cdata->client_socket_fd, buf, BUFSZ - 1, 0);
+        printf("[msg] %s, %d bytes: %s\n", caddrstr, (int)count, buf);
+
+        sprintf(buf, "remote endpoint: %.1000s\n", caddrstr);
+        count = send(cdata->client_socket_fd, buf, strlen(buf), 0);
+        if (count != strlen(buf))
+        {
+            printf("[log] error sending message to %s\n", caddrstr);
+            break;
+        }
     }
+
     close(cdata->client_socket_fd);
 
     pthread_exit(EXIT_SUCCESS);
@@ -82,8 +89,7 @@ int main(int argc, char **argv)
         usage(argc, argv);
     }
 
-    int socket_fd;
-    socket_fd = socket(storage.ss_family, SOCK_STREAM, 0);
+    int socket_fd = socket(storage.ss_family, SOCK_STREAM, 0);
     if (socket_fd == -1)
     {
         logexit("socket");
@@ -108,7 +114,7 @@ int main(int argc, char **argv)
 
     char addrstr[BUFSZ];
     addrtostr(addr, addrstr, BUFSZ);
-    printf("bound to %s, waiting connections\n", addrstr);
+    printf("[log] bound to %s, waiting connections\n", addrstr);
 
     while (1)
     {
