@@ -59,6 +59,11 @@ void *client_thread(void *data)
         printf("[msg] waiting for client %s\n", caddrstr);
         size_t count = recv(cdata->client_socket_fd, buf, BUFSZ - 1, 0);
         printf("[msg] %s, %d bytes: %s\n", caddrstr, (int)count, buf);
+        if (count == 0)
+        {
+            printf("[log] %s disconnected\n", caddrstr);
+            break;
+        }
 
         // sprintf(buf, "remote endpoint: %.1000s\n", caddrstr);
         // count = send(cdata->client_socket_fd, buf, strlen(buf), 0);
