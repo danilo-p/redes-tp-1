@@ -99,7 +99,7 @@ void kill_server(struct server_data *sdata)
 
 bool validate_message_content(char buf[BUFSZ], int size)
 {
-    std::regex rgx("^[^A-Za-z0-9,.?!:;+\\-*/=@#$%()[\\]{} \n]$");
+    std::regex rgx("[^A-Za-z0-9,.?!:;+\\-*/=@#$%()[\\]{} \n]");
     return !(buf[size - 1] != '\n' || std::regex_search(buf, rgx));
 }
 
