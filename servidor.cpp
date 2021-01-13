@@ -5,6 +5,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <vector>
+#include <algorithm>
+#include <iostream>
 
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -40,6 +43,12 @@ struct client_data
 {
     int client_socket_fd;
     struct sockaddr_storage storage;
+    struct server_data *sdata;
+};
+
+struct server_data
+{
+    std::vector<struct client_data *> clients_data;
 };
 
 void *client_thread(void *data)
@@ -78,6 +87,8 @@ void *client_thread(void *data)
     }
 
     close(cdata->client_socket_fd);
+
+    cdata->sdata->clients_data.erase(std::remove(cdata->sdata->clients_data.begin(), cdata->sdata->clients_data.end(), cdata), cdata->sdata->clients_data.end());
 
     pthread_exit(EXIT_SUCCESS);
 }
@@ -123,6 +134,7 @@ int main(int argc, char **argv)
     char addrstr[BUFSZ];
     addrtostr(addr, addrstr, BUFSZ);
     printf("[log] bound to %s, waiting connections\n", addrstr);
+    server_data sdata;
 
     while (1)
     {
@@ -143,6 +155,9 @@ int main(int argc, char **argv)
         }
         cdata->client_socket_fd = client_socket_fd;
         memcpy(&(cdata->storage), &client_storage, sizeof(client_storage));
+
+        cdata->sdata = &sdata;
+        sdata.clients_data.push_back(cdata);
 
         pthread_t tid;
         pthread_create(&tid, NULL, client_thread, cdata);
