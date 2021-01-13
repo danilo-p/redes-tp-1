@@ -83,6 +83,9 @@ void kill_server(struct server_data *sdata)
         free(cdata);
     }
 
+    sdata->clients_data.clear();
+    sdata->clients_data.shrink_to_fit();
+
     close(sdata->socket_fd);
     printf("killed\n");
     exit(EXIT_SUCCESS);

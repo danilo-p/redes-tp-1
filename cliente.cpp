@@ -140,5 +140,7 @@ int main(int argc, char **argv)
 
     close(socket_fd);
 
+    pthread_cancel(send_tid);
+
     exit(EXIT_SUCCESS);
 }
