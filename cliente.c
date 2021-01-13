@@ -79,6 +79,7 @@ void *recv_thread(void *data)
             total += count;
             if (buf[total - 1] == '\n')
             {
+                // replace \n with \0
                 buf[total - 1] = '\0';
                 printf("\nreceived %u bytes\n", total);
                 printf("%s\n\n", buf);
@@ -99,8 +100,9 @@ void *send_thread(void *data)
         printf("\nmessage: \n");
         memset(buf, 0, BUFSZ);
         fgets(buf, BUFSZ - 1, stdin);
-        size_t count = send(socket_fd, buf, strlen(buf) + 1, 0);
-        if (count != strlen(buf) + 1)
+        // adding 1 to strlen(buf) would send \0
+        size_t count = send(socket_fd, buf, strlen(buf), 0);
+        if (count != strlen(buf))
         {
             // server disconnected
             pthread_exit(EXIT_SUCCESS);
