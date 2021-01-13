@@ -12,7 +12,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
-#define BUFSZ 21
+#define BUFSZ 501
 
 void usage(int argc, char **argv)
 {

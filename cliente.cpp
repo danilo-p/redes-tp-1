@@ -10,7 +10,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
-#define BUFSZ 21
+#define BUFSZ 501
 
 void usage(int argc, char **argv)
 {
