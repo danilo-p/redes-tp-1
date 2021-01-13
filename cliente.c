@@ -73,22 +73,20 @@ void *recv_thread(void *data)
             count = recv(socket_fd, buf + total, BUFSZ - total, 0);
             if (count == 0)
             {
-                logexit("recv");
+                // server disconnected
+                pthread_exit(EXIT_SUCCESS);
             }
             total += count;
             if (buf[total - 1] == '\n')
             {
                 buf[total - 1] = '\0';
+                printf("\nreceived %u bytes\n", total);
+                printf("%s\n\n", buf);
+                printf("message: \n");
                 break;
             }
         }
-
-        printf("\nreceived %u bytes\n", total);
-        printf("%s\n\n", buf);
-        printf("message: \n");
     }
-
-    pthread_exit(EXIT_SUCCESS);
 }
 
 void *send_thread(void *data)
@@ -104,11 +102,10 @@ void *send_thread(void *data)
         size_t count = send(socket_fd, buf, strlen(buf) + 1, 0);
         if (count != strlen(buf) + 1)
         {
-            logexit("send");
+            // server disconnected
+            pthread_exit(EXIT_SUCCESS);
         }
     }
-
-    pthread_exit(EXIT_SUCCESS);
 }
 
 int main(int argc, char **argv)
@@ -146,8 +143,9 @@ int main(int argc, char **argv)
     pthread_t send_tid;
     pthread_create(&send_tid, NULL, send_thread, &socket_fd);
 
-    pthread_join(send_tid, NULL);
     pthread_join(recv_tid, NULL);
+
+    printf("[log] %s disconnected\n", addrstr);
 
     close(socket_fd);
 
