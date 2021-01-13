@@ -55,6 +55,19 @@ struct server_data
     std::vector<struct client_data *> clients_data;
 };
 
+void send_message(struct client_data *cdata, char buf[BUFSZ])
+{
+    // adding 1 to strlen(buf) would send \0
+    size_t count = send(cdata->client_socket_fd, buf, strlen(buf), 0);
+    if (count != strlen(buf))
+    {
+        struct sockaddr *client_addr = (struct sockaddr *)(&cdata->storage);
+        char caddrstr[BUFSZ];
+        addrtostr(client_addr, caddrstr, BUFSZ);
+        printf("[log] error sending message to %s\n", caddrstr);
+    }
+}
+
 void broadcast_message(struct client_data *client_sender_data, char buf[BUFSZ])
 {
     for (int i = 0; i < (int)client_sender_data->sdata->clients_data.size(); i++)
@@ -63,15 +76,7 @@ void broadcast_message(struct client_data *client_sender_data, char buf[BUFSZ])
         if (cdata == client_sender_data)
             continue;
 
-        // adding 1 to strlen(buf) would send \0
-        size_t count = send(cdata->client_socket_fd, buf, strlen(buf), 0);
-        if (count != strlen(buf))
-        {
-            struct sockaddr *client_addr = (struct sockaddr *)(&cdata->storage);
-            char caddrstr[BUFSZ];
-            addrtostr(client_addr, caddrstr, BUFSZ);
-            printf("[log] error sending message to %s\n", caddrstr);
-        }
+        send_message(cdata, buf);
     }
 }
 
@@ -98,14 +103,46 @@ bool validate_message_content(char buf[BUFSZ], int size)
     return !(buf[size - 1] != '\n' || std::regex_search(buf, rgx));
 }
 
-bool process_subscription_message(struct client_data *client_sender_data, char buf[BUFSZ], int size)
+bool process_subscription_message(struct client_data *cdata, char buf[BUFSZ], int size)
 {
     buf[size - 1] = '\0'; // eliminate line break
     std::regex rgx("^[+\\-][A-Za-z]+$");
     if (!std::regex_search(buf, rgx))
         return false;
 
-    // TODO: (un)subscribe
+    char confirmation[BUFSZ];
+    switch (buf[0])
+    {
+    case '+':
+        if ((std::find(cdata->tags.begin(), cdata->tags.end(), buf + 1) == cdata->tags.end()))
+        {
+            cdata->tags.push_back(buf + 1);
+            sprintf(confirmation, "subscribed %s\n", buf);
+            send_message(cdata, confirmation);
+        }
+        else
+        {
+            sprintf(confirmation, "already subscribed %s\n", buf);
+            send_message(cdata, confirmation);
+        }
+        break;
+    case '-':
+        if ((std::find(cdata->tags.begin(), cdata->tags.end(), buf + 1) != cdata->tags.end()))
+        {
+            cdata->tags.erase(std::remove(cdata->tags.begin(), cdata->tags.end(), buf + 1), cdata->tags.end());
+            sprintf(confirmation, "unsubscribed %s\n", buf);
+            send_message(cdata, confirmation);
+        }
+        else
+        {
+            sprintf(confirmation, "not subscribed %s\n", buf);
+            send_message(cdata, confirmation);
+        }
+        break;
+    default:
+        return false;
+    }
+
     return true;
 }
 
