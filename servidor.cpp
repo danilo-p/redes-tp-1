@@ -45,10 +45,12 @@ struct client_data
     int client_socket_fd;
     struct sockaddr_storage storage;
     struct server_data *sdata;
+    pthread_t tid;
 };
 
 struct server_data
 {
+    int socket_fd;
     std::vector<struct client_data *> clients_data;
 };
 
@@ -70,6 +72,30 @@ void broadcast_message(struct client_data *client_sender_data, char buf[BUFSZ])
             printf("[log] error sending message to %s\n", caddrstr);
         }
     }
+}
+
+void kill_server(struct server_data *sdata)
+{
+    for (int i = 0; i < (int)sdata->clients_data.size(); i++)
+    {
+        struct client_data *cdata = sdata->clients_data.at(i);
+        close(cdata->client_socket_fd);
+        free(cdata);
+    }
+
+    close(sdata->socket_fd);
+    printf("killed\n");
+    exit(EXIT_SUCCESS);
+}
+
+void process_message(struct client_data *client_sender_data, char buf[BUFSZ])
+{
+    if (strcmp(buf, "##kill\n") == 0)
+    {
+        kill_server(client_sender_data->sdata);
+    }
+
+    broadcast_message(client_sender_data, buf);
 }
 
 bool validate_message(char buf[BUFSZ], int size)
@@ -108,7 +134,7 @@ void *client_thread(void *data)
             printf("[log] %s sent invalid message and was disconnected\n", caddrstr);
             break;
         }
-        broadcast_message(cdata, buf);
+        process_message(cdata, buf);
         // replace \n with \0
         printf("[msg] %s, %d bytes: ---%s---\n", caddrstr, (int)count, buf);
     }
@@ -162,6 +188,7 @@ int main(int argc, char **argv)
     addrtostr(addr, addrstr, BUFSZ);
     printf("[log] bound to %s, waiting connections\n", addrstr);
     server_data sdata;
+    sdata.socket_fd = socket_fd;
 
     while (1)
     {
@@ -186,11 +213,6 @@ int main(int argc, char **argv)
         cdata->sdata = &sdata;
         sdata.clients_data.push_back(cdata);
 
-        pthread_t tid;
-        pthread_create(&tid, NULL, client_thread, cdata);
+        pthread_create(&cdata->tid, NULL, client_thread, cdata);
     }
-
-    close(socket_fd);
-
-    exit(EXIT_SUCCESS);
 }
