@@ -8,6 +8,7 @@
 #include <vector>
 #include <algorithm>
 #include <iostream>
+#include <regex>
 
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -73,12 +74,11 @@ void broadcast_message(struct client_data *client_sender_data, char buf[BUFSZ])
 
 bool validate_message(char buf[BUFSZ], int size)
 {
-    if (buf[size - 1] != '\n')
-    {
-        return false;
-    }
-
-    return true;
+    std::regex rgx("[^A-Za-z0-9,.?!:;+\\-*/=@#$%()[\\]{} \n]");
+    return !(
+        // messages should always end with line break
+        buf[size - 1] != '\n' ||
+        std::regex_search(buf, rgx));
 }
 
 void *client_thread(void *data)
@@ -102,6 +102,7 @@ void *client_thread(void *data)
             printf("[log] %s disconnected\n", caddrstr);
             break;
         }
+        buf[count] = '\0';
         if (!validate_message(buf, count))
         {
             printf("[log] %s sent invalid message and was disconnected\n", caddrstr);
@@ -109,7 +110,6 @@ void *client_thread(void *data)
         }
         broadcast_message(cdata, buf);
         // replace \n with \0
-        buf[count - 1] = '\0';
         printf("[msg] %s, %d bytes: ---%s---\n", caddrstr, (int)count, buf);
     }
 
