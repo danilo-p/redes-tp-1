@@ -35,6 +35,8 @@
 *.i*86
 *.x86_64
 *.hex
+servidor
+cliente
 
 # Debug files
 *.dSYM/
@@ -53,3 +55,6 @@ dkms.conf
 
 # MacOS
 .DS_Store
+
+# Editors
+.vscode
