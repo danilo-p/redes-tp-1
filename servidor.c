@@ -60,13 +60,13 @@ void *client_thread(void *data)
         size_t count = recv(cdata->client_socket_fd, buf, BUFSZ - 1, 0);
         printf("[msg] %s, %d bytes: %s\n", caddrstr, (int)count, buf);
 
-        sprintf(buf, "remote endpoint: %.1000s\n", caddrstr);
-        count = send(cdata->client_socket_fd, buf, strlen(buf), 0);
-        if (count != strlen(buf))
-        {
-            printf("[log] error sending message to %s\n", caddrstr);
-            break;
-        }
+        // sprintf(buf, "remote endpoint: %.1000s\n", caddrstr);
+        // count = send(cdata->client_socket_fd, buf, strlen(buf), 0);
+        // if (count != strlen(buf))
+        // {
+        //     printf("[log] error sending message to %s\n", caddrstr);
+        //     break;
+        // }
     }
 
     close(cdata->client_socket_fd);

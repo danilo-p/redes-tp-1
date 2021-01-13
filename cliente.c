@@ -63,7 +63,6 @@ void *recv_thread(void *data)
     int socket_fd = *((int *)data);
 
     char buf[BUFSZ];
-    printf("message: \n");
     while (1)
     {
         memset(buf, 0, BUFSZ);
@@ -99,6 +98,7 @@ void *send_thread(void *data)
     char buf[BUFSZ];
     while (1)
     {
+        printf("\nmessage: \n");
         memset(buf, 0, BUFSZ);
         fgets(buf, BUFSZ - 1, stdin);
         size_t count = send(socket_fd, buf, strlen(buf) + 1, 0);
