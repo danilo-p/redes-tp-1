@@ -63,19 +63,12 @@ void *recv_thread(void *data)
     int socket_fd = *((int *)data);
 
     char buf[BUFSZ];
+    printf("message: \n");
     while (1)
     {
         memset(buf, 0, BUFSZ);
-        printf("> ");
-        fgets(buf, BUFSZ - 1, stdin);
-        size_t count = send(socket_fd, buf, strlen(buf) + 1, 0);
-        if (count != strlen(buf) + 1)
-        {
-            logexit("send");
-        }
-
-        memset(buf, 0, BUFSZ);
         unsigned total = 0;
+        size_t count;
         while (1)
         {
             count = recv(socket_fd, buf + total, BUFSZ - total, 0);
@@ -86,12 +79,33 @@ void *recv_thread(void *data)
             total += count;
             if (buf[total - 1] == '\n')
             {
+                buf[total - 1] = '\0';
                 break;
             }
         }
 
-        printf("received %u bytes\n", total);
-        puts(buf);
+        printf("\nreceived %u bytes\n", total);
+        printf("%s\n\n", buf);
+        printf("message: \n");
+    }
+
+    pthread_exit(EXIT_SUCCESS);
+}
+
+void *send_thread(void *data)
+{
+    int socket_fd = *((int *)data);
+
+    char buf[BUFSZ];
+    while (1)
+    {
+        memset(buf, 0, BUFSZ);
+        fgets(buf, BUFSZ - 1, stdin);
+        size_t count = send(socket_fd, buf, strlen(buf) + 1, 0);
+        if (count != strlen(buf) + 1)
+        {
+            logexit("send");
+        }
     }
 
     pthread_exit(EXIT_SUCCESS);
@@ -126,9 +140,14 @@ int main(int argc, char **argv)
 
     printf("[log] connected to %s\n", addrstr);
 
-    pthread_t tid;
-    pthread_create(&tid, NULL, recv_thread, &socket_fd);
-    pthread_join(tid, NULL);
+    pthread_t recv_tid;
+    pthread_create(&recv_tid, NULL, recv_thread, &socket_fd);
+
+    pthread_t send_tid;
+    pthread_create(&send_tid, NULL, send_thread, &socket_fd);
+
+    pthread_join(send_tid, NULL);
+    pthread_join(recv_tid, NULL);
 
     close(socket_fd);
 
