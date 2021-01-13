@@ -51,6 +51,26 @@ struct server_data
     std::vector<struct client_data *> clients_data;
 };
 
+void broadcast_message(struct client_data *client_sender_data, char buf[BUFSZ])
+{
+    for (int i = 0; i < (int)client_sender_data->sdata->clients_data.size(); i++)
+    {
+        struct client_data *cdata = client_sender_data->sdata->clients_data.at(i);
+        if (cdata == client_sender_data)
+            continue;
+
+        // adding 1 to strlen(buf) would send \0
+        size_t count = send(cdata->client_socket_fd, buf, strlen(buf), 0);
+        if (count != strlen(buf))
+        {
+            struct sockaddr *client_addr = (struct sockaddr *)(&cdata->storage);
+            char caddrstr[BUFSZ];
+            addrtostr(client_addr, caddrstr, BUFSZ);
+            printf("[log] error sending message to %s\n", caddrstr);
+        }
+    }
+}
+
 void *client_thread(void *data)
 {
     struct client_data *cdata = (struct client_data *)data;
@@ -72,18 +92,10 @@ void *client_thread(void *data)
             printf("[log] %s disconnected\n", caddrstr);
             break;
         }
+        broadcast_message(cdata, buf);
         // replace \n with \0
         buf[count - 1] = '\0';
         printf("[msg] %s, %d bytes: %s\n", caddrstr, (int)count, buf);
-
-        // sprintf(buf, "remote endpoint: %.1000s\n", caddrstr);
-        // // adding 1 to strlen(buf) would send \0
-        // count = send(cdata->client_socket_fd, buf, strlen(buf), 0);
-        // if (count != strlen(buf))
-        // {
-        //     printf("[log] error sending message to %s\n", caddrstr);
-        //     break;
-        // }
     }
 
     close(cdata->client_socket_fd);
