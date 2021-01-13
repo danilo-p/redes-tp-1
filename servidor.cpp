@@ -136,7 +136,7 @@ int main(int argc, char **argv)
             logexit("accept");
         }
 
-        struct client_data *cdata = malloc(sizeof(*cdata));
+        struct client_data *cdata = (struct client_data *)malloc(sizeof(*cdata));
         if (!cdata)
         {
             logexit("malloc");
