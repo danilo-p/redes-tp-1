@@ -12,7 +12,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
-#define BUFSZ 1024
+#define BUFSZ 21
 
 void usage(int argc, char **argv)
 {
@@ -71,6 +71,16 @@ void broadcast_message(struct client_data *client_sender_data, char buf[BUFSZ])
     }
 }
 
+bool validate_message(char buf[BUFSZ], int size)
+{
+    if (buf[size - 1] != '\n')
+    {
+        return false;
+    }
+
+    return true;
+}
+
 void *client_thread(void *data)
 {
     struct client_data *cdata = (struct client_data *)data;
@@ -86,16 +96,21 @@ void *client_thread(void *data)
         memset(buf, 0, BUFSZ);
 
         printf("[msg] waiting for client %s\n", caddrstr);
-        size_t count = recv(cdata->client_socket_fd, buf, BUFSZ - 1, 0);
+        size_t count = recv(cdata->client_socket_fd, buf, BUFSZ, 0);
         if (count == 0)
         {
             printf("[log] %s disconnected\n", caddrstr);
             break;
         }
+        if (!validate_message(buf, count))
+        {
+            printf("[log] %s sent invalid message and was disconnected\n", caddrstr);
+            break;
+        }
         broadcast_message(cdata, buf);
         // replace \n with \0
         buf[count - 1] = '\0';
-        printf("[msg] %s, %d bytes: %s\n", caddrstr, (int)count, buf);
+        printf("[msg] %s, %d bytes: ---%s---\n", caddrstr, (int)count, buf);
     }
 
     close(cdata->client_socket_fd);

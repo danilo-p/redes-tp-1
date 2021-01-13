@@ -10,6 +10,8 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
+#define BUFSZ 21
+
 void usage(int argc, char **argv)
 {
     printf("usage: %s <server IP> <server port>\n", argv[0]);
@@ -56,8 +58,6 @@ int addrparse(const char *addrstr, const char *portstr,
     return -1;
 }
 
-#define BUFSZ 1024
-
 void *recv_thread(void *data)
 {
     int socket_fd = *((int *)data);
@@ -66,27 +66,16 @@ void *recv_thread(void *data)
     while (1)
     {
         memset(buf, 0, BUFSZ);
-        unsigned total = 0;
-        size_t count;
-        while (1)
+        size_t count = recv(socket_fd, buf, BUFSZ, 0);
+        if (count == 0)
         {
-            count = recv(socket_fd, buf + total, BUFSZ - total, 0);
-            if (count == 0)
-            {
-                // server disconnected
-                pthread_exit(EXIT_SUCCESS);
-            }
-            total += count;
-            if (buf[total - 1] == '\n')
-            {
-                // replace \n with \0
-                buf[total - 1] = '\0';
-                printf("\nreceived %u bytes\n", total);
-                printf("%s\n\n", buf);
-                printf("message: \n");
-                break;
-            }
+            // server disconnected
+            pthread_exit(EXIT_SUCCESS);
         }
+        buf[count - 1] = '\0';
+        printf("\nreceived %i bytes\n", (int)count);
+        printf("---%s---\n\n", buf);
+        printf("message: \n");
     }
 }
 
@@ -99,7 +88,7 @@ void *send_thread(void *data)
     {
         printf("\nmessage: \n");
         memset(buf, 0, BUFSZ);
-        fgets(buf, BUFSZ - 1, stdin);
+        fgets(buf, BUFSZ, stdin);
         // adding 1 to strlen(buf) would send \0
         size_t count = send(socket_fd, buf, strlen(buf), 0);
         if (count != strlen(buf))
