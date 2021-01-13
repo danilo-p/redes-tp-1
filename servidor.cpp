@@ -46,6 +46,7 @@ struct client_data
     struct sockaddr_storage storage;
     struct server_data *sdata;
     pthread_t tid;
+    std::vector<std::string> tags;
 };
 
 struct server_data
@@ -91,23 +92,39 @@ void kill_server(struct server_data *sdata)
     exit(EXIT_SUCCESS);
 }
 
-void process_message(struct client_data *client_sender_data, char buf[BUFSZ])
+bool validate_message_content(char buf[BUFSZ], int size)
 {
+    std::regex rgx("^[^A-Za-z0-9,.?!:;+\\-*/=@#$%()[\\]{} \n]$");
+    return !(buf[size - 1] != '\n' || std::regex_search(buf, rgx));
+}
+
+bool process_subscription_message(struct client_data *client_sender_data, char buf[BUFSZ], int size)
+{
+    buf[size - 1] = '\0'; // eliminate line break
+    std::regex rgx("^[+\\-][A-Za-z]+$");
+    if (!std::regex_search(buf, rgx))
+        return false;
+
+    // TODO: (un)subscribe
+    return true;
+}
+
+bool process_message(struct client_data *client_sender_data, char buf[BUFSZ], int size)
+{
+    if (!validate_message_content(buf, size))
+        return false;
+
     if (strcmp(buf, "##kill\n") == 0)
     {
         kill_server(client_sender_data->sdata);
+        return false;
     }
 
-    broadcast_message(client_sender_data, buf);
-}
+    if (buf[0] == '+' || buf[0] == '-')
+        return process_subscription_message(client_sender_data, buf, size);
 
-bool validate_message(char buf[BUFSZ], int size)
-{
-    std::regex rgx("[^A-Za-z0-9,.?!:;+\\-*/=@#$%()[\\]{} \n]");
-    return !(
-        // messages should always end with line break
-        buf[size - 1] != '\n' ||
-        std::regex_search(buf, rgx));
+    broadcast_message(client_sender_data, buf);
+    return true;
 }
 
 void *client_thread(void *data)
@@ -132,12 +149,11 @@ void *client_thread(void *data)
             break;
         }
         buf[count] = '\0';
-        if (!validate_message(buf, count))
+        if (!process_message(cdata, buf, count))
         {
             printf("[log] %s sent invalid message and was disconnected\n", caddrstr);
             break;
         }
-        process_message(cdata, buf);
         // replace \n with \0
         printf("[msg] %s, %d bytes: ---%s---\n", caddrstr, (int)count, buf);
     }
