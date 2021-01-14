@@ -68,6 +68,29 @@ void send_message(struct client_data *cdata, char buf[BUFSZ])
     }
 }
 
+std::vector<std::string> message_tags(char buf[BUFSZ])
+{
+    std::vector<std::string> tags;
+
+    std::string buf_str(buf);
+
+    std::istringstream iss(buf_str);
+    std::vector<std::string> results((std::istream_iterator<std::string>(iss)),
+                                     std::istream_iterator<std::string>());
+
+    std::regex rgx("^#([a-zA-z]+)$");
+    for (int i = 0; i < (int)results.size(); i++)
+    {
+        std::smatch m;
+        if (std::regex_search(results.at(i), m, rgx))
+        {
+            tags.push_back(m.str(1));
+        }
+    }
+
+    return tags;
+}
+
 void broadcast_message(struct client_data *client_sender_data, char buf[BUFSZ])
 {
     for (int i = 0; i < (int)client_sender_data->sdata->clients_data.size(); i++)
@@ -76,7 +99,15 @@ void broadcast_message(struct client_data *client_sender_data, char buf[BUFSZ])
         if (cdata == client_sender_data)
             continue;
 
-        send_message(cdata, buf);
+        std::vector<std::string> buf_tags = message_tags(buf);
+        for (int i = 0; i < (int)cdata->tags.size(); i++)
+        {
+            if (std::find(buf_tags.begin(), buf_tags.end(), cdata->tags.at(i)) != buf_tags.end())
+            {
+                send_message(cdata, buf);
+                break;
+            }
+        }
     }
 }
 
