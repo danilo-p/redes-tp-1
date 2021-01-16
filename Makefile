@@ -20,4 +20,4 @@ valgrind_cliente:
 
 test:
 	cp servidor public
-	tmux new-session 'cd public; ./run-test.sh 1; exec bash -i;'
+	tmux new-session 'cd public; ./run-test.sh $(TEST); exec bash -i;'
