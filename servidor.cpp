@@ -96,9 +96,6 @@ void broadcast_message(struct client_data *client_sender_data, char buf[BUFSZ])
     for (int i = 0; i < (int)client_sender_data->sdata->clients_data.size(); i++)
     {
         struct client_data *cdata = client_sender_data->sdata->clients_data.at(i);
-        if (cdata == client_sender_data)
-            continue;
-
         std::vector<std::string> buf_tags = message_tags(buf);
         for (int i = 0; i < (int)cdata->tags.size(); i++)
         {

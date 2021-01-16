@@ -58,3 +58,7 @@ dkms.conf
 
 # Editors
 .vscode
+
+# Test output
+public/client.log
+public/output*
