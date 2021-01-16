@@ -47,6 +47,7 @@ struct client_data
     struct server_data *sdata;
     pthread_t tid;
     std::vector<std::string> tags;
+    pthread_mutex_t tags_lock = PTHREAD_MUTEX_INITIALIZER;
 };
 
 struct server_data
@@ -99,6 +100,8 @@ void broadcast_message(struct client_data *client_sender_data, char buf[BUFSZ])
     {
         struct client_data *cdata = client_sender_data->sdata->clients_data.at(i);
         std::vector<std::string> buf_tags = message_tags(buf);
+
+        pthread_mutex_lock(&cdata->tags_lock);
         for (int i = 0; i < (int)cdata->tags.size(); i++)
         {
             if (std::find(buf_tags.begin(), buf_tags.end(), cdata->tags.at(i)) != buf_tags.end())
@@ -107,6 +110,7 @@ void broadcast_message(struct client_data *client_sender_data, char buf[BUFSZ])
                 break;
             }
         }
+        pthread_mutex_unlock(&cdata->tags_lock);
     }
     pthread_mutex_unlock(&client_sender_data->sdata->clients_data_lock);
 }
@@ -147,27 +151,33 @@ bool process_subscription_message(struct client_data *cdata, char buf[BUFSZ], in
     switch (buf[0])
     {
     case '+':
+        pthread_mutex_lock(&cdata->tags_lock);
         if ((std::find(cdata->tags.begin(), cdata->tags.end(), buf + 1) == cdata->tags.end()))
         {
             cdata->tags.push_back(buf + 1);
+            pthread_mutex_unlock(&cdata->tags_lock);
             sprintf(confirmation, "subscribed %s\n", buf);
             send_message(cdata, confirmation);
         }
         else
         {
+            pthread_mutex_unlock(&cdata->tags_lock);
             sprintf(confirmation, "already subscribed %s\n", buf);
             send_message(cdata, confirmation);
         }
         break;
     case '-':
+        pthread_mutex_lock(&cdata->tags_lock);
         if ((std::find(cdata->tags.begin(), cdata->tags.end(), buf + 1) != cdata->tags.end()))
         {
             cdata->tags.erase(std::remove(cdata->tags.begin(), cdata->tags.end(), buf + 1), cdata->tags.end());
+            pthread_mutex_unlock(&cdata->tags_lock);
             sprintf(confirmation, "unsubscribed %s\n", buf);
             send_message(cdata, confirmation);
         }
         else
         {
+            pthread_mutex_unlock(&cdata->tags_lock);
             sprintf(confirmation, "not subscribed %s\n", buf);
             send_message(cdata, confirmation);
         }
