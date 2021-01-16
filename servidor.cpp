@@ -47,12 +47,14 @@ struct client_data
     struct server_data *sdata;
     pthread_t tid;
     std::vector<std::string> tags;
+    pthread_mutex_t tags_lock = PTHREAD_MUTEX_INITIALIZER;
 };
 
 struct server_data
 {
     int socket_fd;
     std::vector<struct client_data *> clients_data;
+    pthread_mutex_t clients_data_lock = PTHREAD_MUTEX_INITIALIZER;
 };
 
 void send_message(struct client_data *cdata, char buf[BUFSZ])
@@ -93,10 +95,13 @@ std::vector<std::string> message_tags(char buf[BUFSZ])
 
 void broadcast_message(struct client_data *client_sender_data, char buf[BUFSZ])
 {
+    pthread_mutex_lock(&client_sender_data->sdata->clients_data_lock);
     for (int i = 0; i < (int)client_sender_data->sdata->clients_data.size(); i++)
     {
         struct client_data *cdata = client_sender_data->sdata->clients_data.at(i);
         std::vector<std::string> buf_tags = message_tags(buf);
+
+        pthread_mutex_lock(&cdata->tags_lock);
         for (int i = 0; i < (int)cdata->tags.size(); i++)
         {
             if (std::find(buf_tags.begin(), buf_tags.end(), cdata->tags.at(i)) != buf_tags.end())
@@ -105,11 +110,14 @@ void broadcast_message(struct client_data *client_sender_data, char buf[BUFSZ])
                 break;
             }
         }
+        pthread_mutex_unlock(&cdata->tags_lock);
     }
+    pthread_mutex_unlock(&client_sender_data->sdata->clients_data_lock);
 }
 
 void kill_server(struct server_data *sdata)
 {
+    pthread_mutex_lock(&sdata->clients_data_lock);
     for (int i = 0; i < (int)sdata->clients_data.size(); i++)
     {
         struct client_data *cdata = sdata->clients_data.at(i);
@@ -119,6 +127,7 @@ void kill_server(struct server_data *sdata)
 
     sdata->clients_data.clear();
     sdata->clients_data.shrink_to_fit();
+    pthread_mutex_unlock(&sdata->clients_data_lock);
 
     close(sdata->socket_fd);
     printf("killed\n");
@@ -142,27 +151,33 @@ bool process_subscription_message(struct client_data *cdata, char buf[BUFSZ], in
     switch (buf[0])
     {
     case '+':
+        pthread_mutex_lock(&cdata->tags_lock);
         if ((std::find(cdata->tags.begin(), cdata->tags.end(), buf + 1) == cdata->tags.end()))
         {
             cdata->tags.push_back(buf + 1);
+            pthread_mutex_unlock(&cdata->tags_lock);
             sprintf(confirmation, "subscribed %s\n", buf);
             send_message(cdata, confirmation);
         }
         else
         {
+            pthread_mutex_unlock(&cdata->tags_lock);
             sprintf(confirmation, "already subscribed %s\n", buf);
             send_message(cdata, confirmation);
         }
         break;
     case '-':
+        pthread_mutex_lock(&cdata->tags_lock);
         if ((std::find(cdata->tags.begin(), cdata->tags.end(), buf + 1) != cdata->tags.end()))
         {
             cdata->tags.erase(std::remove(cdata->tags.begin(), cdata->tags.end(), buf + 1), cdata->tags.end());
+            pthread_mutex_unlock(&cdata->tags_lock);
             sprintf(confirmation, "unsubscribed %s\n", buf);
             send_message(cdata, confirmation);
         }
         else
         {
+            pthread_mutex_unlock(&cdata->tags_lock);
             sprintf(confirmation, "not subscribed %s\n", buf);
             send_message(cdata, confirmation);
         }
@@ -225,7 +240,9 @@ void *client_thread(void *data)
 
     close(cdata->client_socket_fd);
 
+    pthread_mutex_lock(&cdata->sdata->clients_data_lock);
     cdata->sdata->clients_data.erase(std::remove(cdata->sdata->clients_data.begin(), cdata->sdata->clients_data.end(), cdata), cdata->sdata->clients_data.end());
+    pthread_mutex_unlock(&cdata->sdata->clients_data_lock);
 
     pthread_exit(EXIT_SUCCESS);
 }
@@ -295,7 +312,10 @@ int main(int argc, char **argv)
         memcpy(&(cdata->storage), &client_storage, sizeof(client_storage));
 
         cdata->sdata = &sdata;
+
+        pthread_mutex_lock(&cdata->sdata->clients_data_lock);
         sdata.clients_data.push_back(cdata);
+        pthread_mutex_unlock(&cdata->sdata->clients_data_lock);
 
         pthread_create(&cdata->tid, NULL, client_thread, cdata);
     }
